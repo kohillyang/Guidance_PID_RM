@@ -1,0 +1,10 @@
+# Type Defenition
+# 0x01	Dest. Coordinate, (x, y, z)
+# 0x02	Velocity limits, (x, y, z)
+# 0x03	Location Error limits, (x, y, z)
+# 0x04	PID parameter for X, (kp, ki, kd)
+# 0x05	PID parameter for Y, (kp, ki, kd)
+# 0x06	PID parameter for Z, (kp, ki, kd)
+
+int16 ctrl_type
+geometry_msgs/Vector3 data

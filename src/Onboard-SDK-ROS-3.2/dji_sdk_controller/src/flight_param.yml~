@@ -1,0 +1,11 @@
+pid_x_kp: 0.8
+pid_x_ki: 0.35
+pid_x_kd: 0.3
+
+pid_y_kp: 0.8
+pid_y_ki: 0.35
+pid_y_kd: 0.3
+
+pid_z_kp: 0.85
+pid_z_ki: 0.4
+pid_z_kd: 0.21

@@ -1,0 +1,223 @@
+/** @file client.cpp
+ *  @version 3.1.8
+ *  @date July 29th, 2016
+ *
+ *  @brief
+ *  All the exampls for ROS are implemented here. 
+ *
+ *  @copyright 2016 DJI. All rights reserved.
+ *
+ */
+
+
+
+#include <ros/ros.h>
+#include <iostream>
+#include <stdio.h>
+#include <stdlib.h>
+#include <dji_sdk/dji_drone.h>
+#include <cstdlib>
+#include <geometry_msgs/Twist.h>
+#include <geometry_msgs/Vector3.h>
+#include <std_msgs/Float32.h>
+#include"pid_set.h"
+
+#define INIT_HEIGHT	2//2m from guidance data
+
+pid_T pid_x = {0.8, 0.35, 0.3};
+pid_T pid_y = {0.8, 0.35, 0.3};
+pid_T pid_z = {0.85, 0.4, 0.21};
+/*
+struct pid_T pid_yaw = {0.7 ,0.0, 0.2};
+struct pid_T pid_u;
+struct pid_T pid_v;
+struct pid_T pid_h = {0.85, 0.4, 0.21};
+*/
+
+using namespace DJI::onboardSDK;
+//using namespace geometry_msgs;
+
+static float expect_x, expect_y, expect_z;
+static volatile geometry_msgs::Twist  pos;
+
+//! Function Prototypes for Mobile command callbacks - Core Functions
+void position_callback(const geometry_msgs::Twist& g_pos)
+{
+	pos.linear.x = g_pos.linear.x ;
+	pos.linear.y = g_pos.linear.y ;
+	pos.linear.z = g_pos.linear.z ;
+
+	pos.angular.z = g_pos.angular.z ;
+}
+
+void console_callback(const geometry_msgs::Vector3& g_pos)
+{
+    expect_x = g_pos.x ;
+    expect_y = g_pos.y ;
+    expect_z = g_pos.z ;
+}
+
+void PID_realize(pid_T pid, float input)
+{
+	float int_index;
+
+    pid.error = input;
+	pid.integral += pid.error;
+
+	if( abs(pid.error) > 9.0 )
+	{
+		int_index = 0.0;		
+	}
+	else
+	{
+		int_index = 0.01 * ( 9.0 - abs(pid.error) ) / 9.0;
+	}
+
+	pid.v = pid.kp * pid.error + 
+			int_index * pid.ki * pid.integral + 
+			pid.kd * (pid.error - pid.error_last);
+	pid.error_last = pid.error;	
+}
+
+
+/*
+void dronePublishCb(const ros::TimerEvent&)
+{
+    std_msgs::String status_msg;
+    geometry_msgs::Vector3 tf_msg;
+    tf::Transform transform;
+
+    //fillDroneStatus();
+    //fillTFFrmae();
+
+    transform.setOrigin( tf::Vector3(tf_msg->x, tf_msg->y, 0.0) );
+    q.setRPY(0, 0, tf_msg->theta);
+    br.sendTransform(tf::StampedTransform(transform, ros::Time::now(), "world", "drone_name"));
+
+    status_msg.data = "Hello, I am your drone.";
+    droneStatus_pub.publish(status_msg);
+}
+*/
+
+int main(int argc, char *argv[])
+{
+    int flightStatus = 0;
+	float start_x, start_y, start_z,actual_z;
+
+    ros::init(argc, argv, "sdk_client");
+	ros::NodeHandle nh;
+    ros::Rate r(50);//50Hz
+	DJIDrone* drone = new DJIDrone(nh);
+	
+    ros::Subscriber position_sub = nh.subscribe("/guidance/position", 100, position_callback);
+    ros::Subscriber console_sub = nh.subscribe("/droneController", 100, console_callback);
+    //static tf::TransformListener tf(ros::Duration(50));//Listen@50Hz
+
+    //static tf::TransformBroadcaster br;
+    //ros::Publisher droneStaus_pub = nh.advertise<std_msgs::String>("/droneStatus", 100);
+    // nh::createTimer(ros::Duration(1/10), dronePublishCb);
+
+    //ros::spinOnce();
+    //after (geometry_msgs::Twist pos) filled
+    start_x = pos.linear.x;
+    start_y = pos.linear.y;
+    start_z = pos.linear.z;
+    
+	//PID_set(&pid_x,&pid_y,&pid_yaw,&pid_u,&pid_v,&pid_h);
+       
+    expect_x = start_x;// + expect_x;
+    expect_y = start_y;// + expect_y;
+    expect_z = start_z - INIT_HEIGHT;
+	
+	//Expect-to-Actual-Error
+	float x_input = 0.0;					 
+    float y_input = 0.0;
+	float z_input = 0.0;
+	//Velocity uplimit
+	float x_limit = 2.0;
+    float y_limit = 2.0;
+	float z_limit = 0.5;
+	//position error
+    float x_land = 0.3;
+    float y_land = 0.3;
+	float z_land = 0.3;
+
+    if (drone->rc_channels.gear < -5000)
+    {
+        ROS_WARN("Turn On to Start Simulation");
+        std::cout<<"here 03 warned"<<std::endl;
+    }
+    
+	while(ros::ok())
+    {
+        ros::spinOnce();
+        r.sleep();
+        dji_sdk::RCChannels rc =  drone->rc_channels;
+
+        std::cout << rc.gear << std::endl;
+        if(!flightStatus && rc.gear < -5000)
+		{
+            std::cout<<"here 04 taking off..."<<std::endl;
+        	sleep(4);
+        	drone->request_sdk_permission_control();
+			usleep(10000);
+        	drone->takeoff();
+			sleep(8);
+            flightStatus = 1;
+    	}
+		else
+        {
+			continue;
+        }
+
+		ros::spinOnce();
+		x_input = expect_x - pos.linear.x;
+		y_input = expect_y - pos.linear.y;
+		z_input = expect_z - pos.linear.z;
+     	actual_z = pos.linear.z;
+     	printf("x_error==========%f\n",x_input);
+     	printf("y_error==========%f\n",y_input);
+        printf("z_error==========%f\n",z_input);
+
+        PID_realize(pid_x, x_input);
+        PID_realize(pid_y, y_input);
+        PID_realize(pid_z, z_input);
+
+    	//v_x max = 2.0m/s
+		pid_x.v = (pid_x.v < x_limit)? pid_x.v : x_limit;
+		pid_x.v = (pid_x.v > (-x_limit))? pid_x.v : (-x_limit);
+		//v_y max = 2.0m/s
+		pid_y.v = (pid_y.v < y_limit)? pid_y.v : y_limit;
+		pid_y.v = (pid_y.v > (-y_limit))? pid_y.v : (-y_limit);
+		//v_z max = 2.0m/s
+		pid_z.v = (pid_z.v < z_limit)? pid_z.v : z_limit;
+		pid_z.v = (pid_z.v > (-z_limit))? pid_z.v : (-z_limit);
+
+		/*
+		if(abs(pid_x.error)<x_land && abs(pid_y.error)<y_land)
+    	{
+			drone->landing();
+        	sleep(8);
+        	drone->release_sdk_permission_control();
+    	}
+		*/
+    	if(abs(actual_z-start_z) > 3.5)
+    	{
+        	drone->landing();
+            flightStatus = 0;
+        	sleep(8);
+        	drone->release_sdk_permission_control();
+    	}
+		
+		drone->attitude_control(Flight::HorizontalLogic::HORIZONTAL_VELOCITY |		
+								Flight::VerticalLogic::VERTICAL_VELOCITY |
+								Flight::YawLogic::YAW_ANGLE |
+								Flight::HorizontalCoordinate::HORIZONTAL_GROUND |
+								Flight::SmoothMode::SMOOTH_ENABLE,
+								pid_x.v, pid_y.v, pid_z.v, 0);
+    }
+  return 0;
+}
+
+
+   

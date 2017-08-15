@@ -1,0 +1,7 @@
+
+roslaunch dji_sdk sdk_manifold.launch
+rosrun guidance guidanceNode
+rosrun dji_sdk_demo dji_sdk_client
+rosrun dji_sdk_controller dji_sdk_controller
+
+

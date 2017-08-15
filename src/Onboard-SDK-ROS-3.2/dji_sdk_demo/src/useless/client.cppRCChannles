@@ -1,0 +1,89 @@
+/** @file client.cpp
+ *  @version 3.1.8
+ *  @date July 29th, 2016
+ *
+ *  @brief
+ *  All the exampls for ROS are implemented here. 
+ *
+ *  @copyright 2016 DJI. All rights reserved.
+ *
+ */
+
+
+
+#include <ros/ros.h>
+#include <stdio.h>
+#include <dji_sdk/dji_drone.h>
+#include <cstdlib>
+#include <stdlib.h>
+#include <actionlib/client/simple_action_client.h>
+#include <actionlib/client/terminal_state.h>
+
+using namespace DJI::onboardSDK;
+
+//! Function Prototypes for Mobile command callbacks - Core Functions
+void ObtainControlMobileCallback(DJIDrone *drone);
+void ReleaseControlMobileCallback(DJIDrone *drone);
+void TakeOffMobileCallback(DJIDrone *drone);
+void LandingMobileCallback(DJIDrone *drone);
+void GetSDKVersionMobileCallback(DJIDrone *drone);
+void ArmMobileCallback(DJIDrone *drone);
+void DisarmMobileCallback(DJIDrone *drone);
+void GoHomeMobileCallback(DJIDrone *drone);
+void TakePhotoMobileCallback(DJIDrone *drone);
+void StartVideoMobileCallback(DJIDrone *drone);
+void StopVideoMobileCallback(DJIDrone *drone);
+//! Function Prototypes for Mobile command callbacks - Custom Missions
+void DrawCircleDemoMobileCallback(DJIDrone *drone);
+void DrawSquareDemoMobileCallback(DJIDrone *drone);
+void GimbalControlDemoMobileCallback(DJIDrone *drone);
+void AttitudeControlDemoMobileCallback(DJIDrone *drone);
+void LocalNavigationTestMobileCallback(DJIDrone *drone);
+void GlobalNavigationTestMobileCallback(DJIDrone *drone);
+void WaypointNavigationTestMobileCallback(DJIDrone *drone);
+void VirtuaRCTestMobileCallback(DJIDrone *drone);
+
+//! For LAS logging
+void StartMapLASLoggingMobileCallback(DJIDrone *drone);
+void StopMapLASLoggingMobileCallback(DJIDrone *drone);
+void StartCollisionAvoidanceCallback(DJIDrone *drone);
+void StopCollisionAvoidanceCallback(DJIDrone *drone);
+
+//rc_channels_subscriber = nh.subscribe<dji_sdk::RCChannels>("dji_sdk/rc_channels", 10, &DJIDrone::rc_channels_subscriber_callback, this);
+/*void rc_channels_subscriber_callback(dji_sdk::RCChannels rc_channels)
+    {
+        //this->rc_channels = rc_channels;
+        printf("roll:%f ,pitch:%f ,yaw:%f, throttle:%f ,gear:%f", rc_channels.roll,rc_channels.pitch,rc_channels.yaw,rc_channels.throttle,rc_channels.gear);
+
+    }*/
+//dji_sdk::RCChannels RCChannels;
+
+
+int main(int argc, char *argv[])
+{
+    int main_operate_code = 0;
+    int temp32;
+    int circleRadius;
+    int circleHeight;
+    float Phi, circleRadiusIncrements;
+    int x_center, y_center, yaw_local;
+    bool valid_flag = false;
+    bool err_flag = false;
+    ros::init(argc, argv, "sdk_client");
+    ROS_INFO("sdk_service_client_test");
+    ros::NodeHandle nh;
+    DJIDrone* drone = new DJIDrone(nh);
+    ros::Rate  loop_rate(10);
+while(1){
+
+    dji_sdk::RCChannels rc =  drone->rc_channels;
+ //   printf("roll:%f ,pitch:%f ,yaw:%f, throttle:%f ,gear:%f \n", rc.roll,rc.pitch,rc.yaw, rc.throttle,rc.gear);
+     printf("roll:%d ,pitch:%d ,yaw:%d, throttle:%d ,gear:%d \n", rc.roll,rc.pitch,rc.yaw, rc.throttle,rc.gear);
+//printf("roll:%f ,pitch:%f ,yaw:%f, throttle:%f ,gear:%f", DJIDrone->rc_channels.roll,DJIDrone->rc_channels.pitch,DJIDrone->rc_channels.yaw,DJIDrone->rc_channels.throttle,DJIDrone->rc_channels.gear);
+       // cout << rc.roll <<endl;
+     usleep(1000);
+    ros::spinOnce();
+    }
+
+    return 0;
+}
